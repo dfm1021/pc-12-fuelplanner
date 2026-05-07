@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC-12 Fuel Planner · Part 135</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --border-light: #21262d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --accent: #f0a500;
+    --accent-dim: rgba(240,165,0,0.12);
+    --green: #3fb950;
+    --green-dim: rgba(63,185,80,0.12);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff;
+    --blue-dim: rgba(88,166,255,0.1);
+    --warn: #d29922;
+    --warn-dim: rgba(210,153,34,0.12);
+    --purple: #bc8cff;
+    --purple-dim: rgba(188,140,255,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+  header .spacer { flex: 1; }
+  .reg-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .mtow-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .app {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .left-col { display: flex; flex-direction: column; gap: 16px; }
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .card-header { padding: 11px 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; background: var(--surface2); }
+  .card-header h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .card-header .tag { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 3px; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(240,165,0,0.25); }
+  .card-body { padding: 16px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-row:last-child { margin-bottom: 0; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; font-family: 'IBM Plex Mono', monospace; display: flex; align-items: center; gap: 5px; }
+  .field input, .field select, .field textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 8px 10px; transition: border-color 0.15s; outline: none; width: 100%; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  .field input[readonly] { opacity: 0.55; cursor: not-allowed; }
+  .field input::placeholder { color: var(--muted); opacity: 0.5; }
+  .field textarea { resize: vertical; min-height: 64px; }
+  .field select option { background: var(--surface2); }
+  .field .hint { font-size: 10px; color: var(--muted); opacity: 0.7; }
+
+  .section-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px; margin-top: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light); }
+
+  .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--border); border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+  .slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked + .slider { background: var(--accent); }
+  .toggle input:checked + .slider:before { transform: translateX(16px); }
+
+  /* LEGS */
+  .legs-container { display: flex; flex-direction: column; gap: 12px; }
+  .leg-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .leg-header { background: var(--surface2); padding: 8px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-light); }
+  .leg-num { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); background: var(--accent-dim); padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(240,165,0,0.2); }
+  .leg-route-label { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); flex: 1; }
+  .remove-leg { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; font-size: 11px; padding: 2px 8px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; transition: all 0.15s; }
+  .remove-leg:hover { border-color: var(--red); color: var(--red); }
+  .leg-body { padding: 14px; }
+
+  .add-leg-btn { background: var(--surface2); border: 1px dashed var(--border); border-radius: 6px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 10px; width: 100%; cursor: pointer; transition: all 0.15s; text-align: center; letter-spacing: 0.05em; }
+  .add-leg-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* RESULT */
+  .result-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .result-header { padding: 11px 16px; background: var(--surface2); border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
+  .result-header h2 { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  .fuel-breakdown { padding: 12px 14px; display: flex; flex-direction: column; gap: 1px; }
+  .fuel-line { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-radius: 4px; }
+  .fuel-line:hover { background: var(--surface2); }
+  .fuel-line .fl-label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .fuel-line .fl-value { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); }
+  .fuel-line.subtotal { border-top: 1px solid var(--border-light); margin-top: 4px; padding-top: 8px; }
+  .fuel-line.subtotal .fl-label { color: var(--text); font-weight: 500; }
+  .fuel-line.total { background: var(--accent-dim); border: 1px solid rgba(240,165,0,0.2); border-radius: 6px; margin-top: 6px; }
+  .fuel-line.total .fl-label { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .fuel-line.total .fl-value { color: var(--accent); font-size: 14px; font-weight: 600; }
+
+  .big-stat { padding: 14px 16px; text-align: center; border-top: 1px solid var(--border-light); }
+  .big-stat .bs-value { font-family: 'IBM Plex Mono', monospace; font-size: 40px; font-weight: 600; color: var(--accent); line-height: 1; letter-spacing: -0.02em; }
+  .big-stat .bs-unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+  .big-stat .bs-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'IBM Plex Mono', monospace; }
+  .big-stat .bs-gal { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .alert { margin: 0 14px 10px; padding: 9px 11px; border-radius: 5px; font-size: 12px; display: flex; align-items: flex-start; gap: 7px; line-height: 1.5; }
+  .alert.warn    { background: var(--warn-dim);   border: 1px solid rgba(210,153,34,0.3);  color: var(--warn); }
+  .alert.good    { background: var(--green-dim);  border: 1px solid rgba(63,185,80,0.3);   color: var(--green); }
+  .alert.danger  { background: var(--red-dim);    border: 1px solid rgba(248,81,73,0.3);   color: var(--red); }
+  .alert.info    { background: var(--blue-dim);   border: 1px solid rgba(88,166,255,0.3);  color: var(--blue); }
+  .alert.minfuel { background: var(--purple-dim); border: 1px solid rgba(188,140,255,0.3); color: var(--purple); }
+
+  .fbo-decision { margin: 0 14px 10px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .fbo-decision .fd-header { background: var(--surface2); padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border-light); }
+  .fbo-decision .fd-options { display: flex; }
+  .fbo-option { flex: 1; padding: 9px 12px; border-right: 1px solid var(--border-light); }
+  .fbo-option:last-child { border-right: none; }
+  .fbo-option.recommended { background: var(--green-dim); }
+  .fbo-option .fo-title { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .fbo-option .fo-cost { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+  .fbo-option .fo-detail { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .fbo-option.recommended .fo-cost { color: var(--green); }
+  .fbo-option:not(.recommended) .fo-cost { color: var(--red); }
+  .rec-badge { font-size: 9px; background: var(--green); color: var(--bg); padding: 1px 5px; border-radius: 3px; font-weight: 600; margin-left: 5px; text-transform: uppercase; }
+
+  .weight-bar-wrap { padding: 0 14px 12px; }
+  .weight-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace; }
+  .weight-bar-track { height: 7px; background: var(--bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .weight-bar-fill { height: 100%; border-radius: 8px; transition: width 0.4s ease, background 0.3s; }
+
+  .disc-inputs { display: none; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .disc-inputs.open { display: flex; }
+
+  .log-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .log-header { padding: 11px 16px; background: var(--surface2); border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .log-header h2 { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 10px; padding: 3px 8px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; transition: all 0.15s; }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+  .log-empty { padding: 20px 16px; text-align: center; color: var(--muted); font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+  .log-entries { max-height: 260px; overflow-y: auto; }
+  .log-entry { padding: 10px 14px; border-bottom: 1px solid var(--border-light); display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; padding-top: 1px; }
+  .log-body .lb-route { font-size: 12px; font-weight: 500; color: var(--text); }
+  .log-body .lb-detail { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .log-body .lb-note { font-size: 11px; color: var(--warn); margin-top: 2px; font-style: italic; }
+  .log-fuel { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+  .calc-btn { display: block; width: 100%; padding: 12px; background: var(--accent); color: var(--bg); font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; border: none; border-radius: 6px; cursor: pointer; margin-top: 8px; transition: opacity 0.15s, transform 0.1s; }
+  .calc-btn:hover { opacity: 0.9; }
+  .calc-btn:active { transform: scale(0.99); }
+
+  .log-btn { display: block; width: 100%; padding: 10px; background: transparent; color: var(--green); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--green); border-radius: 6px; cursor: pointer; transition: all 0.15s; margin-top: 6px; }
+  .log-btn:hover { background: var(--green-dim); }
+
+  .empty-result { padding: 32px 16px; text-align: center; color: var(--muted); }
+  .empty-result .er-icon { font-size: 30px; margin-bottom: 10px; }
+  .empty-result p { font-size: 12px; line-height: 1.6; }
+
+  /* Reference-only fuel lines */
+  .fuel-line.ref { opacity: 0.5; }
+  .fuel-line.ref .fl-label { font-style: italic; }
+  .fuel-line.ref .fl-value { color: var(--muted); }
+  .ref-tag { font-size: 9px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 1px 5px; border-radius: 3px; margin-left: 5px; text-transform: uppercase; letter-spacing: 0.05em; font-style: normal; }
+
+  /* Departure load callout */
+  .dep-callout {
+    margin: 14px 14px 0;
+    background: linear-gradient(135deg, rgba(240,165,0,0.08) 0%, rgba(240,165,0,0.04) 100%);
+    border: 1px solid rgba(240,165,0,0.3);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .dep-callout .dc-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    opacity: 0.8;
+    margin-bottom: 6px;
+  }
+  .dep-callout .dc-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .dep-callout .dc-lbs {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .dep-callout .dc-unit { font-size: 13px; color: var(--muted); }
+  .dep-callout .dc-gal  { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); }
+  .dep-callout .dc-savings {
+    font-size: 12px;
+    color: var(--green);
+    margin-top: 4px;
+  }
+  .dep-callout .dc-nosave { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* Fuel trace timeline */
+  .trace-leg-hdr {
+    background: var(--surface2);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin: 8px 0 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .trace-leg-hdr:first-child { margin-top: 2px; }
+  .trace-time { color: var(--muted); font-weight: 400; font-size: 10px; }
+  .trace-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px 4px 14px;
+    font-size: 11px;
+    border-left: 2px solid transparent;
+    margin-bottom: 1px;
+  }
+  .trace-row .tr-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .trace-depart  { border-left-color: var(--green);  color: var(--text); }
+  .trace-burn    { border-left-color: transparent;   color: var(--muted); }
+  .trace-burn .tr-val { color: var(--muted); }
+  .trace-arrive  { border-left-color: var(--blue);  color: var(--text); font-weight: 500; }
+  .trace-fbo     { border-left-color: var(--blue);  color: var(--blue); font-weight: 500; }
+  .trace-divider { border-top: 1px dashed var(--border-light); margin: 3px 0 3px 14px; }
+
+  /* Fuel order calculator */
+  .fuel-order-wrap {
+    margin: 0 14px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .fuel-order-hdr {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-light);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .fuel-order-body { padding: 12px; }
+  .fuel-order-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .fuel-order-input-row label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    white-space: nowrap;
+  }
+  .fuel-order-input-row input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    flex: 1;
+    outline: none;
+  }
+  .fuel-order-input-row input:focus { border-color: var(--accent); }
+  .fuel-order-input-row span { font-size: 11px; color: var(--muted); }
+  .fuel-order-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .fo-stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px;
+    text-align: center;
+  }
+  .fo-stat .fos-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .fo-stat .fos-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .fo-stat .fos-unit { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    .right-col { position: static; max-height: none; }
+    .form-row.four { grid-template-columns: 1fr 1fr; }
+    .form-row.three { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>PC-12 Fuel Planner</div>
+  <span class="logo-sub">Part 135 · Standardized</span>
+  <div class="spacer"></div>
+  <div class="mtow-badge" id="mtow-display">MTOW —</div>
+  <div class="reg-badge" id="reg-display">Select Aircraft</div>
+  <button onclick="resetAll()" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;cursor:pointer;letter-spacing:0.05em;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↺ Reset</button>
+</header>
+
+<div class="app">
+  <div class="left-col">
+
+    <!-- AIRCRAFT -->
+    <div class="card">
+      <div class="card-header"><h2>🛩 Aircraft & Crew</h2></div>
+      <div class="card-body">
+        <div class="form-row three">
+          <div class="field">
+            <label>Tail Number</label>
+            <select id="tail-select" onchange="selectAircraft()">
+              <option value="">— Select —</option>
+              <option value="N401SE">N401SE</option>
+              <option value="N1919">N1919</option>
+              <option value="N7417">N7417</option>
+              <option value="N728MG">N728MG</option>
+              <option value="N307WL">N307WL</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Basic Empty Weight</label>
+            <input type="number" id="bew" placeholder="Select aircraft" readonly>
+            <span class="hint">lbs · auto-filled by tail #</span>
+          </div>
+          <div class="field">
+            <label>Pilot</label>
+            <input type="text" id="pilot-name" placeholder="Capt. Smith">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Pax + Bags (total payload)</label>
+            <input type="number" id="payload" placeholder="0" value="0">
+            <span class="hint">lbs</span>
+          </div>
+          <div class="field">
+            <label>Home Base Fuel Price</label>
+            <input type="number" id="home-ppu" placeholder="5.25" value="5.25" step="0.01">
+            <span class="hint">$/gal — used for tankering math</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLIGHT LEGS -->
+    <div class="card">
+      <div class="card-header">
+        <h2>✈ Flight Legs</h2>
+        <span class="tag" id="legs-count-tag">1 LEG</span>
+      </div>
+      <div class="card-body">
+        <div class="section-label">Global Reserve Settings</div>
+        <div class="form-row three" style="margin-bottom:16px;">
+          <div class="field">
+            <label>Reserve Rule</label>
+            <select id="reserve-rule">
+              <option value="45">IFR — 45 min</option>
+              <option value="30">VFR — 30 min</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Contingency Reserve</label>
+            <select id="contingency" onchange="toggleContingency()">
+              <option value="500">500 lbs</option>
+              <option value="600">600 lbs</option>
+              <option value="700" selected>700 lbs</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input type="number" id="contingency-custom" placeholder="Enter lbs" min="0" step="10"
+              style="display:none; margin-top:4px;"
+              oninput="checkContingencyWarning()">
+            <span class="hint">minimum fuel to land with at every stop</span>
+            <span id="contingency-warn" style="display:none; font-size:10px; color:var(--warn); margin-top:2px;"></span>
+          </div>
+          <div class="field">
+            <label>Cruise Fuel Flow</label>
+            <input type="number" id="fuel-flow" value="65" step="1">
+            <span class="hint">gal/hr (standard: 65)</span>
+          </div>
+        </div>
+
+        <div class="legs-container" id="legs-container"></div>
+        <button class="add-leg-btn" onclick="addLeg()" style="margin-top:10px;">+ Add Leg</button>
+      </div>
+    </div>
+
+    <!-- DISCRETIONARY -->
+    <div class="card">
+      <div class="card-header"><h2>📋 Discretionary Fuel</h2></div>
+      <div class="card-body">
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="disc-toggle" onchange="toggleDisc()">
+            <span class="slider"></span>
+          </label>
+          <label for="disc-toggle" style="cursor:pointer; font-size:12px; color:var(--muted);">Add discretionary fuel (requires justification)</label>
+        </div>
+        <div class="disc-inputs" id="disc-inputs">
+          <div class="form-row">
+            <div class="field">
+              <label>Additional Fuel</label>
+              <input type="number" id="disc-lbs" placeholder="0" value="0" step="10">
+              <span class="hint">lbs added beyond computed load</span>
+            </div>
+            <div class="field">
+              <label>Applies to Leg</label>
+              <select id="disc-leg"><option value="1">Leg 1</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Justification (required)</label>
+            <textarea id="disc-note" placeholder="e.g. Forecast winds not captured in planning, destination field conditions, crew judgment..."></textarea>
+          </div>
+        </div>
+        <button class="calc-btn" onclick="calculateAll()">▶ COMPUTE FUEL PLAN</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+    <div class="result-panel">
+      <div class="result-header">
+        <div class="status-dot" id="status-dot"></div>
+        <h2>Computed Fuel Plan</h2>
+      </div>
+      <div id="result-body">
+        <div class="empty-result">
+          <div class="er-icon">🛩</div>
+          <p>Select aircraft, enter legs,<br>and press Compute Fuel Plan</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-section">
+      <div class="log-header">
+        <h2>📁 Flight Log</h2>
+        <button class="clear-btn" onclick="clearLog()">Clear</button>
+      </div>
+      <div id="log-body"><div class="log-empty">No flights logged this session.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- QUICK FBO DECISION CALCULATOR                             -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div style="max-width:1160px;margin:0 auto 48px;padding:0 24px;">
+  <div style="border-top:1px solid var(--border);margin-bottom:28px;padding-top:28px;display:flex;align-items:center;gap:12px;">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);">Quick Tools</span>
+    <div style="flex:1;height:1px;background:var(--border-light);"></div>
+  </div>
+
+  <div style="max-width:560px;">
+    <div class="card">
+      <div class="card-header">
+        <h2>⚡ Take Fuel or Tanker?</h2>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+          Quick check: is it cheaper to buy fuel at the destination FBO (waiving the handling fee), or tanker from home base and pay the fee?
+        </p>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="field">
+            <label>Dest Fuel Price</label>
+            <input type="number" id="qc-dest-ppu" placeholder="5.85" step="0.01" oninput="quickCheck()">
+            <span class="hint">$/gal at destination FBO</span>
+          </div>
+          <div class="field">
+            <label>Home Base Price</label>
+            <input type="number" id="qc-home-ppu" placeholder="5.25" step="0.01" oninput="quickCheck()">
+            <span class="hint">$/gal at home base</span>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="field">
+            <label>Gallons to Waive Fee</label>
+            <input type="number" id="qc-waiver-gal" placeholder="50" step="1" oninput="quickCheck()">
+            <span class="hint">minimum purchase at FBO</span>
+          </div>
+          <div class="field">
+            <label>Handling Fee</label>
+            <input type="number" id="qc-fee" placeholder="200" step="5" oninput="quickCheck()">
+            <span class="hint">$ if no fuel purchased</span>
+          </div>
+        </div>
+        <div id="qc-result" style="margin-top:16px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// AIRCRAFT DATA
+// ═══════════════════════════════════════════
+const AIRCRAFT = {
+  'N401SE': { bew: 6200, mtow: 10450 },
+  'N1919':  { bew: 6150, mtow: 10450 },
+  'N7417':  { bew: 6250, mtow: 10450 },
+  'N728MG': { bew: 6180, mtow: 9921  },
+  'N307WL': { bew: 6200, mtow: 9921  },
+};
+
+const LBS_PER_GAL = 6.75;
+
+let flightLog = [];
+let legCounter = 0;
+
+// ═══════════════════════════════════════════
+// AIRCRAFT SELECTION
+// ═══════════════════════════════════════════
+function selectAircraft() {
+  const tail = document.getElementById('tail-select').value;
+  const ac = AIRCRAFT[tail];
+  document.getElementById('reg-display').textContent  = tail || 'Select Aircraft';
+  document.getElementById('mtow-display').textContent = ac ? `MTOW ${ac.mtow.toLocaleString()} lbs` : 'MTOW —';
+  document.getElementById('bew').value = ac ? ac.bew : '';
+  document.getElementById('bew').placeholder = ac ? '' : 'Select aircraft';
+}
+
+function getAcMTOW() {
+  const ac = AIRCRAFT[document.getElementById('tail-select').value];
+  return ac ? ac.mtow : 10450;
+}
+
+// ═══════════════════════════════════════════
+// LEG MANAGEMENT
+// ═══════════════════════════════════════════
+function addLeg() {
+  legCounter++;
+  const idx = legCounter;
+  const container = document.getElementById('legs-container');
+  const div = document.createElement('div');
+  div.className = 'leg-card';
+  div.id = `leg-card-${idx}`;
+  div.innerHTML = `
+    <div class="leg-header">
+      <span class="leg-num">Leg ${getLegCards().length + 1}</span>
+      <span class="leg-route-label" id="leg-lbl-${idx}">Enter airports below</span>
+      ${idx > 1 ? `<button class="remove-leg" onclick="removeLeg(${idx})">✕</button>` : ''}
+    </div>
+    <div class="leg-body">
+      <div class="form-row three">
+        <div class="field">
+          <label>Departure</label>
+          <input type="text" id="dep-${idx}" maxlength="4" placeholder="KDAL"
+            oninput="this.value=this.value.toUpperCase(); updateLegLabel(${idx})">
+        </div>
+        <div class="field">
+          <label>Destination</label>
+          <input type="text" id="dest-${idx}" maxlength="4" placeholder="KHOU"
+            oninput="this.value=this.value.toUpperCase(); updateLegLabel(${idx}); checkHomeBase(${idx})">
+        </div>
+        <div class="field">
+          <label>Flight Time</label>
+          <input type="number" id="ftime-${idx}" placeholder="1.5" step="0.1" min="0.1">
+          <span class="hint">hrs · each 0.1 = 6 min</span>
+        </div>
+      </div>
+      <div class="section-label" style="margin-top:4px;" id="fbo-label-${idx}">FBO at Destination</div>
+      <div class="form-row three" id="fbo-fields-${idx}">
+        <div class="field">
+          <label>Handling Fee</label>
+          <input type="number" id="fbo-fee-${idx}" value="200">
+          <span class="hint">$ to waive</span>
+        </div>
+        <div class="field">
+          <label>Min Fuel to Waive</label>
+          <input type="number" id="fbo-gal-${idx}" value="50">
+          <span class="hint">gallons</span>
+        </div>
+        <div class="field">
+          <label>FBO Fuel Price</label>
+          <input type="number" id="fbo-ppu-${idx}" value="5.85" step="0.01">
+          <span class="hint">$/gal</span>
+        </div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+  renumberLegs();
+  updateDiscLegSelect();
+}
+
+function removeLeg(idx) {
+  const el = document.getElementById(`leg-card-${idx}`);
+  if (el) el.remove();
+  renumberLegs();
+  updateDiscLegSelect();
+}
+
+function getLegCards() {
+  return Array.from(document.querySelectorAll('.leg-card'));
+}
+
+function getLegIds() {
+  return getLegCards().map(el => parseInt(el.id.replace('leg-card-','')));
+}
+
+function renumberLegs() {
+  getLegCards().forEach((el, i) => {
+    const numEl = el.querySelector('.leg-num');
+    if (numEl) numEl.textContent = `Leg ${i+1}`;
+  });
+  document.getElementById('legs-count-tag').textContent =
+    `${getLegIds().length} LEG${getLegIds().length !== 1 ? 'S' : ''}`;
+}
+
+function updateLegLabel(idx) {
+  const dep  = (document.getElementById(`dep-${idx}`)?.value  || '????');
+  const dest = (document.getElementById(`dest-${idx}`)?.value || '????');
+  const el = document.getElementById(`leg-lbl-${idx}`);
+  if (el) el.textContent = `${dep} → ${dest}`;
+}
+
+function updateDiscLegSelect() {
+  const sel = document.getElementById('disc-leg');
+  const ids = getLegIds();
+  sel.innerHTML = ids.map((id, i) => {
+    const dep  = document.getElementById(`dep-${id}`)?.value  || '???';
+    const dest = document.getElementById(`dest-${id}`)?.value || '???';
+    return `<option value="${id}">Leg ${i+1} · ${dep}→${dest}</option>`;
+  }).join('');
+}
+
+function toggleDisc() {
+  const on = document.getElementById('disc-toggle').checked;
+  document.getElementById('disc-inputs').classList.toggle('open', on);
+  if (!on) {
+    document.getElementById('disc-lbs').value = 0;
+    document.getElementById('disc-note').value = '';
+  }
+}
+
+// ═══════════════════════════════════════════
+// HOME BASE AUTO-RECOGNITION
+// ═══════════════════════════════════════════
+function checkHomeBase(idx) {
+  const firstLegId = getLegIds()[0];
+  const homeBase   = (document.getElementById(`dep-${firstLegId}`)?.value || '').toUpperCase();
+  const dest       = (document.getElementById(`dest-${idx}`)?.value || '').toUpperCase();
+  const isHome     = homeBase.length >= 3 && dest === homeBase;
+
+  const feeEl   = document.getElementById(`fbo-fee-${idx}`);
+  const ppuEl   = document.getElementById(`fbo-ppu-${idx}`);
+  const galEl   = document.getElementById(`fbo-gal-${idx}`);
+  const labelEl = document.getElementById(`fbo-label-${idx}`);
+  const fieldsEl= document.getElementById(`fbo-fields-${idx}`);
+
+  if (isHome) {
+    feeEl.value    = 0;
+    feeEl.disabled = true;
+    galEl.value    = 0;
+    galEl.disabled = true;
+    ppuEl.value    = document.getElementById('home-ppu').value || 5.25;
+    ppuEl.disabled = true;
+    if (labelEl) labelEl.innerHTML = '🏠 Home Base — no handling fee';
+    if (fieldsEl) fieldsEl.style.opacity = '0.5';
+  } else {
+    feeEl.disabled = false;
+    galEl.disabled = false;
+    ppuEl.disabled = false;
+    if (labelEl) labelEl.innerHTML = 'FBO at Destination';
+    if (fieldsEl) fieldsEl.style.opacity = '';
+  }
+}
+
+function toggleContingency() {
+  const sel     = document.getElementById('contingency').value;
+  const custEl  = document.getElementById('contingency-custom');
+  const warnEl  = document.getElementById('contingency-warn');
+  if (sel === 'custom') {
+    custEl.style.display = '';
+    custEl.focus();
+    checkContingencyWarning();
+  } else {
+    custEl.style.display = 'none';
+    warnEl.style.display = 'none';
+  }
+}
+
+function checkContingencyWarning() {
+  const customLbs  = parseFloat(document.getElementById('contingency-custom').value) || 0;
+  const fuelFlow   = parseFloat(document.getElementById('fuel-flow').value) || 65;
+  const resMins    = parseFloat(document.getElementById('reserve-rule').value) || 45;
+  const legalFloor = (resMins / 60) * fuelFlow * 6.75;
+  const warnEl     = document.getElementById('contingency-warn');
+  if (customLbs > 0 && customLbs < legalFloor) {
+    warnEl.style.display = '';
+    warnEl.textContent   = `⚠ Below legal ${resMins}-min reserve (${legalFloor.toFixed(0)} lbs minimum)`;
+  } else {
+    warnEl.style.display = 'none';
+  }
+}
+
+function getContingencyLbs() {
+  const sel = document.getElementById('contingency').value;
+  if (sel === 'custom') {
+    return parseFloat(document.getElementById('contingency-custom').value) || 0;
+  }
+  return parseFloat(sel) || 700;
+}
+
+// ═══════════════════════════════════════════
+// MAIN CALCULATION
+// ═══════════════════════════════════════════
+function v(id)  { return parseFloat(document.getElementById(id)?.value) || 0; }
+function s(id)  { return (document.getElementById(id)?.value || '').trim(); }
+
+function calculateAll() {
+  const tail      = s('tail-select');
+  const bew       = v('bew') || 6200;
+  const payload   = v('payload');
+  const MTOW      = getAcMTOW();
+  const zfw       = bew + payload;
+  const fuelFlow  = v('fuel-flow') || 65;
+  const resMins   = v('reserve-rule');
+  const contgLbs  = getContingencyLbs();
+  if (!contgLbs) { showAlert('Enter a contingency reserve value.', 'warn'); return; }
+  const homePPU   = v('home-ppu') || 5.25;
+  const pilot     = s('pilot-name');
+  const discOn    = document.getElementById('disc-toggle').checked;
+  const discLbs   = discOn ? v('disc-lbs') : 0;
+  const discNote  = s('disc-note');
+
+  if (!tail)   { showAlert('Select an aircraft to begin.', 'warn'); return; }
+  const legIds = getLegIds();
+  if (!legIds.length) { showAlert('Add at least one flight leg.', 'warn'); return; }
+
+  for (const id of legIds) {
+    if (!s(`dep-${id}`) || !s(`dest-${id}`)) { showAlert(`Leg: enter both airports.`, 'warn'); return; }
+    if (!v(`ftime-${id}`))                   { showAlert(`Enter flight time — winds may still be loading, or enter manually.`, 'warn'); return; }
+  }
+  if (discLbs > 0 && !discNote) { showAlert('Discretionary fuel requires a justification note.', 'warn'); return; }
+
+  // ── Per-leg fuel calculations ──────────────────────
+  const legs = legIds.map(id => {
+    const ftHrs   = v(`ftime-${id}`);
+    const altHrs  = v(`alt-${id}`);
+    const tripLbs = ftHrs * fuelFlow * LBS_PER_GAL;
+    const altLbs  = altHrs * fuelFlow * LBS_PER_GAL;
+    const resLbs  = (resMins / 60) * fuelFlow * LBS_PER_GAL;
+    return {
+      id, dep: s(`dep-${id}`), dest: s(`dest-${id}`),
+      ftHrs, tripLbs, altLbs, resLbs,
+      fbofee: v(`fbo-fee-${id}`) || 200,
+      fboGal: v(`fbo-gal-${id}`) || 50,
+      fboPPU: v(`fbo-ppu-${id}`) || 5.85,
+    };
+  });
+
+  const taxiLbs  = 40;
+  const homeBase = legs[0]?.dep || '';
+
+  // ── Step 1: Decide at each INTERMEDIATE stop: take fuel or pay fee? ──
+  // Formula: (dest_price - home_price) × waiver_gallons vs. handling fee
+  // If extra cost vs home < fee → plan a fuel stop (factor into departure fuel)
+  // Home base destination (fee = 0) never needs a fuel stop
+  const takeFuelAt = legs.slice(0, -1).map(leg => {
+    if (leg.fbofee === 0 || leg.fboGal === 0) return false; // home base or no fee
+    const extraCostVsHome = (leg.fboPPU - homePPU) * leg.fboGal;
+    return extraCostVsHome < leg.fbofee;
+  });
+
+  // ── Step 2: Backward pass — min departure fuel accounting for planned stops ──
+  // Contingency is the ABSOLUTE FLOOR at every landing — intermediate or final.
+  // We never plan to arrive anywhere with less than contgLbs.
+  let neededFromHere = contgLbs;
+  for (let i = legs.length - 1; i >= 0; i--) {
+    if (i < legs.length - 1 && takeFuelAt[i]) {
+      // We'll add fboGal at this stop — arrive with what's needed minus that addition,
+      // but NEVER less than contgLbs (contingency is an absolute floor at every stop).
+      const fboMinLbs = legs[i].fboGal * LBS_PER_GAL;
+      neededFromHere  = Math.max(contgLbs, neededFromHere - fboMinLbs);
+    }
+    neededFromHere += legs[i].tripLbs + taxiLbs;
+  }
+  const departureFuel = neededFromHere;
+
+  // Planned en-route fuel cost (for departure callout)
+  let enRouteCost = 0;
+  takeFuelAt.forEach((take, i) => {
+    if (take) enRouteCost += legs[i].fboGal * legs[i].fboPPU;
+  });
+
+  // Estimate FBO fee savings (fees avoided at planned stops)
+  let fboSavingsEstimate = takeFuelAt.reduce((sum, take, i) => {
+    return take ? sum + legs[i].fbofee : sum;
+  }, 0);
+
+  const totalDep    = departureFuel + discLbs;
+  const totalDepGal = totalDep / LBS_PER_GAL;
+
+  // ── Weight check ──────────────────────────────────
+  const tow    = zfw + totalDep;
+  const towPct = (tow / MTOW) * 100;
+  const wtOk   = tow <= MTOW;
+
+  // ── FBO simulation: burn fuel and apply planned stops ─────────────
+  let fuelRemaining = totalDep;
+  let fboHtml = '';
+
+  legs.forEach((leg, i) => {
+    fuelRemaining -= taxiLbs + leg.tripLbs;
+    const arrLbs = fuelRemaining;
+    const arrGal = arrLbs / LBS_PER_GAL;
+    const isIntermediate = i < legs.length - 1;
+    const isHomeDest = leg.dest.toUpperCase() === homeBase.toUpperCase();
+
+    // ── Contingency floor check — absolute at every landing ──────────
+    if (arrLbs < contgLbs - 1) { // -1 for floating point tolerance
+      fboHtml += `<div class="alert danger">🚫 Leg ${i+1}: Landing at <strong>${leg.dest}</strong> with ${arrLbs.toFixed(0)} lbs — BELOW ${contgLbs} lb contingency floor. Increase departure fuel or remove a leg.</div>`;
+      fuelRemaining = contgLbs; // clamp for subsequent sim steps
+    }
+
+    let decision = '';
+
+    if (!isIntermediate) {
+      // ── Final destination ──────────────────────────
+      if (isHomeDest) {
+        decision = `<div class="alert good">🏠 Home base (${leg.dest}) — landing with <strong>${arrLbs.toFixed(0)} lbs (${arrGal.toFixed(1)} gal)</strong>. No handling fee.</div>`;
+      } else if (arrGal >= leg.fboGal) {
+        decision = `<div class="alert good">✓ Final: ${arrGal.toFixed(0)} gal on arrival meets FBO minimum — fee waived.</div>`;
+      } else {
+        const extraGal   = leg.fboGal - arrGal;
+        const topOffCost = extraGal * leg.fboPPU;
+        const extraCostVsHome = (leg.fboPPU - homePPU) * leg.fboGal;
+        const rec = extraCostVsHome < leg.fbofee ? 'topoff' : 'payfee';
+        decision = `
+          <div class="fbo-decision">
+            <div class="fd-header">Final Stop · ${leg.dep} → ${leg.dest}</div>
+            <div class="fd-options">
+              <div class="fbo-option ${rec==='topoff'?'recommended':''}">
+                <div class="fo-title">Take Fuel to ${leg.fboGal} gal ${rec==='topoff'?'<span class="rec-badge">Rec</span>':''}</div>
+                <div class="fo-cost" style="color:${rec==='topoff'?'var(--green)':'var(--red)'}">+${extraGal.toFixed(1)} gal · $${topOffCost.toFixed(0)}</div>
+                <div class="fo-detail">Saves $${(leg.fbofee - topOffCost).toFixed(0)} vs. fee</div>
+              </div>
+              <div class="fbo-option ${rec==='payfee'?'recommended':''}">
+                <div class="fo-title">Pay Handling Fee ${rec==='payfee'?'<span class="rec-badge">Rec</span>':''}</div>
+                <div class="fo-cost" style="color:${rec==='payfee'?'var(--green)':'var(--red)'}">-$${leg.fbofee.toFixed(0)}</div>
+                <div class="fo-detail">Saves $${(topOffCost - leg.fbofee).toFixed(0)} vs. top-off</div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+    } else if (takeFuelAt[i]) {
+      // ── Planned fuel stop ──────────────────────────
+      const fboMinLbs   = legs[i].fboGal * LBS_PER_GAL;
+      const fuelAfter   = arrLbs + fboMinLbs;
+      const stopCost    = legs[i].fboGal * legs[i].fboPPU;
+      const extraVsHome = (legs[i].fboPPU - homePPU) * legs[i].fboGal;
+      const savingsNote = extraVsHome <= 0
+        ? `dest fuel cheaper than home by $${Math.abs(extraVsHome).toFixed(0)}`
+        : `$${extraVsHome.toFixed(0)} more than home, but saves $${(legs[i].fbofee - stopCost).toFixed(0)} in fees`;
+
+      decision = `
+        <div class="fbo-decision">
+          <div class="fd-header" style="color:var(--blue)">⛽ Leg ${i+1} Planned Fuel Stop · ${leg.dest}</div>
+          <div style="padding:10px 12px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="color:var(--muted)">Arrive with</span>
+              <span style="font-family:IBM Plex Mono,monospace;font-weight:600;">${arrLbs.toFixed(0)} lbs (${arrGal.toFixed(1)} gal)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="color:var(--muted)">Add ${legs[i].fboGal} gal to waive fee</span>
+              <span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--blue)">+${fboMinLbs.toFixed(0)} lbs · $${stopCost.toFixed(0)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="color:var(--muted)">Depart with</span>
+              <span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--green)">${fuelAfter.toFixed(0)} lbs (${(fuelAfter/LBS_PER_GAL).toFixed(1)} gal)</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px;">${savingsNote}</div>
+          </div>
+        </div>`;
+      fuelRemaining += fboMinLbs; // apply planned fuel to simulation
+
+    } else {
+      // ── No planned stop — show fee status ─────────
+      if (arrGal >= leg.fboGal) {
+        decision = `<div class="alert good">✓ Leg ${i+1}: ${arrGal.toFixed(0)} gal on arrival at ${leg.dest} — FBO minimum met, fee waived.</div>`;
+      } else {
+        decision = `<div class="alert warn">💰 Leg ${i+1}: Pay $${leg.fbofee} handling fee at ${leg.dest} — cheaper than buying fuel there.</div>`;
+      }
+    }
+
+    fboHtml += decision;
+  });
+
+  // ── Weight bar & alerts ────────────────────────────
+  const barPct   = Math.min(towPct, 100);
+  const barColor = towPct > 100 ? 'var(--red)' : towPct > 92 ? 'var(--warn)' : 'var(--green)';
+  const wtAlert  = !wtOk
+    ? `<div class="alert danger">🚫 EXCEEDS MTOW by ${(tow-MTOW).toFixed(0)} lbs — reduce fuel or payload.</div>`
+    : towPct > 95
+      ? `<div class="alert warn">⚠ ${(MTOW-tow).toFixed(0)} lbs under MTOW. Verify W&B.</div>`
+      : `<div class="alert good">✓ ${(MTOW-tow).toFixed(0)} lbs under MTOW (${towPct.toFixed(1)}%).</div>`;
+
+  const discAlert = discLbs > 0
+    ? `<div class="alert info">📋 +${discLbs} lbs discretionary · "${discNote}" · ${pilot||'Pilot'}</div>`
+    : '';
+
+  // ── Fuel trace (forward simulation for display) ─────
+  const routeStr = legs.map((l,i) => i===0 ? `${l.dep}→${l.dest}` : l.dest).join('→');
+  let rows = '';
+  let traceFuel = totalDep;
+
+  legs.forEach((leg, i) => {
+    const deptLbs = traceFuel;
+    const deptGal = deptLbs / LBS_PER_GAL;
+    traceFuel -= taxiLbs + leg.tripLbs;
+    const arrLbs = traceFuel;
+    const arrGal = arrLbs / LBS_PER_GAL;
+    const arrColor = arrLbs < contgLbs ? 'var(--red)' : arrLbs < contgLbs * 1.15 ? 'var(--warn)' : 'var(--green)';
+    const isLast = i === legs.length - 1;
+
+    // Leg header
+    rows += `<div class="trace-leg-hdr">LEG ${i+1} · ${leg.dep} → ${leg.dest}<span class="trace-time">${leg.ftHrs.toFixed(1)} hr · ${(leg.ftHrs * fuelFlow * LBS_PER_GAL).toFixed(0)} lbs burn</span></div>`;
+
+    // Departure fuel
+    const towAtDept  = zfw + deptLbs;
+    const belowMTOW  = MTOW - towAtDept;
+    const mtowNote   = `<span style="font-size:10px;color:var(--muted);margin-left:6px;">${belowMTOW.toFixed(0)} lbs below MGTOW</span>`;
+    if (i === 0) {
+      rows += `<div class="trace-row trace-depart"><span>Load at home (${leg.dep}) ${mtowNote}</span><span class="tr-val" style="color:var(--accent)">${deptLbs.toFixed(0)} lbs / ${deptGal.toFixed(1)} gal</span></div>`;
+    } else {
+      rows += `<div class="trace-row trace-depart"><span>Depart ${leg.dep} ${mtowNote}</span><span class="tr-val">${deptLbs.toFixed(0)} lbs / ${deptGal.toFixed(1)} gal</span></div>`;
+    }
+
+    // Burns
+    rows += `<div class="trace-row trace-burn"><span>— Trip fuel (${leg.ftHrs.toFixed(1)} hr × ${fuelFlow} gph × 6.75)</span><span class="tr-val">−${leg.tripLbs.toFixed(0)} lbs</span></div>`;
+    rows += `<div class="trace-row trace-burn"><span>— Taxi / start</span><span class="tr-val">−${taxiLbs} lbs</span></div>`;
+    rows += `<div class="trace-divider"></div>`;
+
+    // Arrival
+    const arrLabel = isLast
+      ? `Arrive ${leg.dest} with${leg.dest === homeBase ? ' 🏠' : ''}`
+      : `Arrive ${leg.dest}`;
+    rows += `<div class="trace-row trace-arrive" style="border-left-color:${arrColor}"><span>${arrLabel}</span><span class="tr-val" style="color:${arrColor}">${arrLbs.toFixed(0)} lbs / ${arrGal.toFixed(1)} gal</span></div>`;
+
+    // Planned FBO stop
+    if (!isLast && takeFuelAt[i]) {
+      const fboMinLbs    = legs[i].fboGal * LBS_PER_GAL;
+      traceFuel         += fboMinLbs;
+      const afterFuelLbs = traceFuel;
+      const towAfterFuel = zfw + afterFuelLbs;
+      const belowAfter   = MTOW - towAfterFuel;
+      rows += `<div class="trace-row trace-fbo"><span>⛽ FBO stop — add ${legs[i].fboGal} gal to waive $${legs[i].fbofee} fee</span><span class="tr-val">+${fboMinLbs.toFixed(0)} lbs</span></div>`;
+      rows += `<div class="trace-row trace-depart" style="border-left-color:var(--blue)"><span>Depart ${leg.dest} after fueling <span style="font-size:10px;color:var(--muted);margin-left:6px;">${belowAfter.toFixed(0)} lbs below MGTOW</span></span><span class="tr-val" style="color:var(--blue)">${afterFuelLbs.toFixed(0)} lbs / ${(afterFuelLbs/LBS_PER_GAL).toFixed(1)} gal</span></div>`;
+    }
+
+    // Ref lines (reserve + alternate)
+    rows += `<div class="trace-row trace-burn" style="margin-top:2px;"><span>🕐 45-min reserve <span class="ref-tag">ref</span></span><span class="tr-val">${leg.resLbs.toFixed(0)} lbs</span></div>`;
+    if (leg.altLbs > 0) {
+      rows += `<div class="trace-row trace-burn"><span>🔁 Alternate fuel <span class="ref-tag">ref</span></span><span class="tr-val">${leg.altLbs.toFixed(0)} lbs</span></div>`;
+    }
+  });
+
+  // Final contingency
+  rows += `<div class="fuel-line" style="background:var(--accent-dim);border:1px solid rgba(240,165,0,0.15);border-radius:4px;margin-top:6px;"><span class="fl-label" style="color:var(--accent);">🔒 Land with (contingency)</span><span class="fl-value" style="color:var(--accent);">${contgLbs} lbs / ${(contgLbs/LBS_PER_GAL).toFixed(1)} gal</span></div>`;
+
+  document.getElementById('status-dot').classList.add('live');
+
+  const savingsLine = enRouteCost > 0
+    ? `<div class="dc-savings">⛽ Planned en-route fuel: <strong>$${enRouteCost.toFixed(0)}</strong> · avoids <strong>$${fboSavingsEstimate.toFixed(0)}</strong> in handling fees</div>`
+    : legs.length > 1
+      ? `<div class="dc-nosave">Tankering from home — no planned fuel stops needed</div>`
+      : `<div class="dc-nosave">FBO decision shown below</div>`;
+
+  document.getElementById('result-body').innerHTML = `
+    <div class="dep-callout">
+      <div class="dc-label">⛽ Load at Home Base · Leg 1 Departure</div>
+      <div class="dc-main">
+        <span class="dc-lbs">${totalDep.toFixed(0)}</span><span class="dc-unit">lbs</span>
+        <span class="dc-gal">/ ${totalDepGal.toFixed(1)} gal</span>
+      </div>
+      ${savingsLine}
+    </div>
+    <div class="fuel-breakdown">
+      ${rows}
+      ${discLbs > 0 ? `<div class="fuel-line" style="color:var(--warn);margin-top:4px;"><span class="fl-label" style="color:var(--warn)">➕ Discretionary (${pilot||'Pilot'})</span><span class="fl-value" style="color:var(--warn)">+${discLbs} lbs</span></div>` : ''}
+      <div class="fuel-line total" style="margin-top:6px;">
+        <span class="fl-label">DEPARTURE FUEL LOAD</span>
+        <span class="fl-value">${totalDep.toFixed(0)} lbs / ${totalDepGal.toFixed(1)} gal</span>
+      </div>
+    </div>
+
+    ${wtAlert}
+    <div class="weight-bar-wrap">
+      <div class="weight-bar-label"><span>ZFW: ${zfw.toFixed(0)} lbs</span><span>TOW: ${tow.toFixed(0)} / ${MTOW.toLocaleString()} lbs</span></div>
+      <div class="weight-bar-track"><div class="weight-bar-fill" style="width:${barPct.toFixed(1)}%;background:${barColor}"></div></div>
+    </div>
+
+    ${fboHtml}
+    ${discAlert}
+
+    <div style="padding:0 14px 10px;">
+      <button class="log-btn" onclick="logFlight(${totalDep.toFixed(0)},${departureFuel.toFixed(0)},${discLbs},'${esc(routeStr)}','${esc(discNote)}','${esc(pilot)}','${esc(tail)}')">
+        ✓ LOG THIS FLIGHT PLAN
+      </button>
+    </div>
+
+    <div class="fuel-order-wrap">
+      <div class="fuel-order-hdr">⛽ Fuel Order Calculator — ${legs[0]?.dep || 'Home Base'}</div>
+      <div class="fuel-order-body">
+        <div class="fuel-order-input-row">
+          <label>Fuel on board now</label>
+          <input type="number" id="fob-input" placeholder="0" min="0"
+            oninput="calcFuelOrder(${totalDep.toFixed(0)})"
+            onchange="calcFuelOrder(${totalDep.toFixed(0)})">
+          <span>lbs</span>
+        </div>
+        <div id="fuel-order-result">
+          <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;padding:4px 0;">Enter fuel on board to calculate fuel order</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function esc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ═══════════════════════════════════════════
+// QUICK FBO DECISION CALCULATOR
+// ═══════════════════════════════════════════
+function quickCheck() {
+  const destPPU   = parseFloat(document.getElementById('qc-dest-ppu').value);
+  const homePPU   = parseFloat(document.getElementById('qc-home-ppu').value);
+  const waiverGal = parseFloat(document.getElementById('qc-waiver-gal').value);
+  const fee       = parseFloat(document.getElementById('qc-fee').value);
+  const el        = document.getElementById('qc-result');
+
+  // Need all four values to compute
+  if (isNaN(destPPU) || isNaN(homePPU) || isNaN(waiverGal) || isNaN(fee)) {
+    el.innerHTML = '';
+    return;
+  }
+
+  // Formula: (dest - home) × waiver_gallons
+  // If result < handling fee → take fuel (extra cost of buying dest fuel < fee)
+  // If result ≥ handling fee → tanker (fee is cheaper than buying expensive dest fuel)
+  const extraCost = (destPPU - homePPU) * waiverGal;
+  const takeFuel  = extraCost < fee;
+  const diff      = Math.abs(fee - extraCost);
+  const sign      = extraCost >= 0 ? '+' : '−';
+  const absExtra  = Math.abs(extraCost);
+
+  // Math line
+  const mathLine = `($${destPPU.toFixed(2)} − $${homePPU.toFixed(2)}) × ${waiverGal} gal = ${extraCost >= 0 ? '' : '−'}$${absExtra.toFixed(2)} vs. $${fee.toFixed(0)} fee`;
+
+  if (takeFuel) {
+    el.innerHTML = `
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;">${mathLine}</div>
+      <div style="background:var(--green-dim);border:2px solid var(--green);border-radius:6px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:var(--green);letter-spacing:0.05em;">✓ TAKE FUEL</div>
+          <div style="font-size:12px;color:var(--green);opacity:0.85;margin-top:3px;">Buying ${waiverGal} gal saves $${diff.toFixed(0)} vs. paying the fee</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--green);">$${diff.toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--green);opacity:0.7;">saved</div>
+        </div>
+      </div>`;
+  } else if (extraCost === fee) {
+    el.innerHTML = `
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;">${mathLine}</div>
+      <div style="background:var(--surface2);border:2px solid var(--border);border-radius:6px;padding:14px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:var(--muted);">— BREAK EVEN</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Both options cost the same — pilot's choice.</div>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;">${mathLine}</div>
+      <div style="background:var(--red-dim);border:2px solid var(--red);border-radius:6px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:var(--red);letter-spacing:0.05em;">✕ TANKER — PAY THE FEE</div>
+          <div style="font-size:12px;color:var(--red);opacity:0.85;margin-top:3px;">Buying here costs $${diff.toFixed(0)} more than paying the fee</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--red);">$${diff.toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--red);opacity:0.7;">extra cost</div>
+        </div>
+      </div>`;
+  }
+}
+
+function calcFuelOrder(targetLbs) {
+  const fob = parseFloat(document.getElementById('fob-input')?.value) || 0;
+  const el  = document.getElementById('fuel-order-result');
+  if (!el) return;
+
+  if (fob >= targetLbs) {
+    const over = fob - targetLbs;
+    el.innerHTML = `<div class="alert good" style="margin:0;">✓ Sufficient fuel on board — no order needed. ${over.toFixed(0)} lbs over load target.</div>`;
+    return;
+  }
+
+  const toAddLbs = targetLbs - fob;
+  const toAddGal = toAddLbs / 6.75;
+  const perWing  = toAddGal / 2;
+
+  el.innerHTML = `
+    <div class="fuel-order-grid">
+      <div class="fo-stat">
+        <div class="fos-label">Add</div>
+        <div class="fos-val" style="color:var(--accent)">${toAddLbs.toFixed(0)}</div>
+        <div class="fos-unit">lbs</div>
+      </div>
+      <div class="fo-stat">
+        <div class="fos-label">Total Order</div>
+        <div class="fos-val">${toAddGal.toFixed(1)}</div>
+        <div class="fos-unit">gallons</div>
+      </div>
+      <div class="fo-stat">
+        <div class="fos-label">Per Wing</div>
+        <div class="fos-val">${perWing.toFixed(1)}</div>
+        <div class="fos-unit">gal / wing</div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════
+function logFlight(totalLbs, minLbs, discLbs, route, note, pilot, tail) {
+  if (discLbs > 0 && !note) {
+    alert('A justification note is required for discretionary fuel.');
+    document.getElementById('disc-note').focus();
+    return;
+  }
+  const now = new Date();
+  flightLog.unshift({ totalLbs, minLbs, discLbs, route, note, pilot, tail,
+    timeStr: now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+    dateStr: now.toLocaleDateString([],{month:'short',day:'numeric'}) });
+  renderLog();
+}
+
+function renderLog() {
+  if (!flightLog.length) {
+    document.getElementById('log-body').innerHTML = '<div class="log-empty">No flights logged this session.</div>';
+    return;
+  }
+  document.getElementById('log-body').innerHTML = `<div class="log-entries">${flightLog.map(e => `
+    <div class="log-entry">
+      <div class="log-time">${e.dateStr}<br>${e.timeStr}</div>
+      <div class="log-body">
+        <div class="lb-route">${e.tail ? e.tail+' · ' : ''}${e.route}</div>
+        <div class="lb-detail">Min legal: ${e.minLbs} lbs${e.discLbs>0?` · +${e.discLbs} disc.`:''}${e.pilot?' · '+e.pilot:''}</div>
+        ${e.note?`<div class="lb-note">📋 ${e.note}</div>`:''}
+      </div>
+      <div class="log-fuel">${e.totalLbs} lbs</div>
+    </div>`).join('')}</div>`;
+}
+
+function clearLog() {
+  if (!flightLog.length) return;
+  if (confirm('Clear all logged flights?')) { flightLog = []; renderLog(); }
+}
+
+function showAlert(msg, type) {
+  document.getElementById('result-body').innerHTML =
+    `<div style="padding:16px"><div class="alert ${type}">⚠ ${msg}</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════
+function resetAll() {
+  if (!confirm('Reset all fields and start a new fuel plan?')) return;
+
+  // Aircraft & crew
+  document.getElementById('tail-select').value = '';
+  document.getElementById('bew').value = '';
+  document.getElementById('bew').placeholder = 'Select aircraft';
+  document.getElementById('payload').value = 0;
+  document.getElementById('pilot-name').value = '';
+  document.getElementById('home-ppu').value = 5.25;
+  document.getElementById('reg-display').textContent = 'Select Aircraft';
+  document.getElementById('mtow-display').textContent = 'MTOW —';
+
+  // Global reserve settings
+  document.getElementById('reserve-rule').value = 45;
+  document.getElementById('contingency').value = 700;
+  document.getElementById('contingency-custom').value = '';
+  document.getElementById('contingency-custom').style.display = 'none';
+  document.getElementById('contingency-warn').style.display = 'none';
+  document.getElementById('fuel-flow').value = 65;
+
+  // Legs — remove all, start fresh
+  legCounter = 0;
+  document.getElementById('legs-container').innerHTML = '';
+  addLeg();
+
+  // Discretionary
+  document.getElementById('disc-toggle').checked = false;
+  document.getElementById('disc-inputs').classList.remove('open');
+  document.getElementById('disc-lbs').value = 0;
+  document.getElementById('disc-note').value = '';
+
+  // Results panel
+  document.getElementById('status-dot').classList.remove('live');
+  document.getElementById('result-body').innerHTML = `
+    <div class="empty-result">
+      <div class="er-icon">🛩</div>
+      <p>Select aircraft, enter legs,<br>and press Compute Fuel Plan</p>
+    </div>`;
+}
+
+// ── Init: start with one leg ──
+addLeg();
+</script>
+</body>
+</html>
